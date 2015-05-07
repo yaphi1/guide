@@ -14,6 +14,29 @@ body{
 	font-size:20px;
 	font-family:sans-serif;
 	color:#333;
+
+	padding-left: 20px;
+	padding-bottom: 40px;
+}
+
+input, textarea{
+	font-size: 30px;
+	width: 50%;
+	padding: 15px;
+	border: 1px solid #ddd;
+}
+
+button{
+	font-size: 30px;
+	padding: 15px;
+	border: 0px;
+	background: #4ca;
+	color: #fff;
+	cursor: pointer;
+}
+
+form{
+	padding-left: 40px;
 }
 
 </style>
@@ -21,11 +44,58 @@ body{
 </head>
 <body>
 
-
 <h1>Testing node filesystem</h1>
 
+<div style="padding-left:50px;">
+
+	<h2>Create profile:</h2>
+	<form id="create_profile">
+		Name:<br><input id="username" autocomplete="off">
+		<br><br>Profile info:
+		<br><textarea id="profile_info" autocomplete="off"></textarea>
+		<br><br><button>Create Profile</button>
+	</form>
+
+	<br><br>
+	<h2>Get profile:</h2>
+	<form id="get_profile">
+		Name:<br><input id="user_to_get"><button>Get Profile</button>
+	</form>
+
+	<div id="dataoutput"></div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
 <script>
 var yb = { id : function(str){return document.getElementById(str)} };
+var socket = io();
+
+
+yb.id('create_profile').onsubmit = function(){
+	socket.emit('create_profile', [yb.id('username').value, yb.id('profile_info').value] );
+
+	yb.id('username').value = '';
+	yb.id('profile_info').value = '';
+
+	return false;
+};
+
+
+yb.id('get_profile').onsubmit = function(){
+	socket.emit('request_profile', yb.id('user_to_get').value);
+
+	return false;
+};
+
+
+socket.on('got_profile',function(data){
+	console.log(data);
+	var name = data[0];
+	var profile = data[1].replace(/\n/g,'<br>');
+	yb.id('dataoutput').innerHTML = '<h2>Profile retrieved:</h2><b>Name:</b> '+name+'<br><br><b>Profile info:</b><br>'+profile;
+});
+
 </script>
 </body>
 </html>
