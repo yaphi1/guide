@@ -39,62 +39,241 @@ form{
 	padding-left: 40px;
 }
 
+#note_titles{
+	vertical-align: top;
+	width:30%;
+	padding: 0px;
+	box-sizing:border-box;
+	background: #eee;
+	display: inline-block;
+	margin: 0px;
+}
+
+#note_titles li{
+	list-style-type: none;
+	padding: 10px;
+}
+
+#note_titles li:hover{
+	background: lightblue;
+}
+
+.date_div{
+	font-size: 14px;
+	font-weight: 100;
+	color: #888;
+	padding-top: 4px;
+}
+
+.selected_note{
+	background: gold;
+}
+
+#note_contents{
+	vertical-align: top;
+	width: 60%;
+	box-sizing:border-box;
+	display: inline-block;
+	background: #ddd;
+	padding: 20px;
+	height: 300px;
+}
+
 </style>
 
 </head>
 <body>
 
-<h1>Testing node filesystem</h1>
+<h1>Guide</h1>
 
-<div style="padding-left:50px;">
+<button id="delete_note" style="float:right; background:red;">Delete Note</button>
+<button id="save" style="float:right; margin-right:140px;">Save all changes</button>
+<button id="create_new">New note</button>
+<br>
+<ul id="note_titles">
+	hi
+</ul><!--
+--><textarea id="note_contents">
+</textarea>
 
-	<h2>Create profile:</h2>
-	<form id="create_profile">
-		Name:<br><input id="username" autocomplete="off">
-		<br><br>Profile info:
-		<br><textarea id="profile_info" autocomplete="off"></textarea>
-		<br><br><button>Create Profile</button>
-	</form>
 
-	<br><br>
-	<h2>Get profile:</h2>
-	<form id="get_profile">
-		Name:<br><input id="user_to_get"><button>Get Profile</button>
-	</form>
 
-	<div id="dataoutput"></div>
 
-</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 var yb = { id : function(str){return document.getElementById(str)} };
 var socket = io();
 
-
-yb.id('create_profile').onsubmit = function(){
-	socket.emit('create_profile', [yb.id('username').value, yb.id('profile_info').value] );
-
-	yb.id('username').value = '';
-	yb.id('profile_info').value = '';
-
-	return false;
-};
+var all_data = {}; // this will hold the data
 
 
-yb.id('get_profile').onsubmit = function(){
-	socket.emit('request_profile', yb.id('user_to_get').value);
 
-	return false;
-};
-
-
-socket.on('got_profile',function(data){
+/************************************************************************
+GET DATA FROM STORAGE
+************************************************************************/
+socket.on('update_all_data',function(data){
 	console.log(data);
-	var name = data[0];
-	var profile = data[1].replace(/\n/g,'<br>');
-	yb.id('dataoutput').innerHTML = '<h2>Profile retrieved:</h2><b>Name:</b> '+name+'<br><br><b>Profile info:</b><br>'+profile;
+
+	var output = '';
+	all_data = data;
+
+	for(var key in data){
+		// generate title from content
+		var visible_title = data[key].content.match(/[^\s][^\n]*/i);
+
+		// set up titles
+		output += '<li id="'+key+'" onclick="switch_note('+key+')"><span class="titlespan">'+visible_title+'</span><div class="date_div">'+formatted_date(data[key].updated)+'</div></li>';
+	}
+	yb.id('note_titles').innerHTML = output;
+
+	yb.id('note_titles').firstChild.click(); // select first note by default	
 });
+
+
+
+
+/************************************************************************
+output the date as MM/DD/YYYY HH:MM (a|p)m
+************************************************************************/
+function formatted_date(date_number){
+	var date = new Date(+date_number);
+	var hours = date.getHours()%12;
+	if(hours==0){hours='12';}
+	var minutes = ('0'+date.getMinutes()).slice(-2);
+	var am_or_pm = date.getHours()<12 ? 'AM' : 'PM';
+	return (date.getMonth()+1) +'/'+ date.getDate() +'/'+ date.getFullYear() + ' '
+		+ hours + ':' + minutes +' '+ am_or_pm;
+}
+
+
+
+/************************************************************************
+SWITCH BETWEEN NOTES
+************************************************************************/
+function switch_note(key){
+	try{document.querySelector('.selected_note').className = '';} catch(e){}
+
+	yb.id(key).className = 'selected_note';
+	yb.id('note_contents').value = all_data[key] ? all_data[key].content : '';
+	yb.id('note_contents').setAttribute('data-timestamp',key);
+}
+
+
+
+// this will store any new and/or updated notes before they get saved
+var updated_notes = {};
+
+
+
+
+
+/************************************************************************
+CREATE NEW NOTE
+************************************************************************/
+yb.id('create_new').onclick = function(){
+	var key = +new Date()+'';
+	updated_notes[key] = '';
+
+	var newli = document.createElement('li');
+	newli.innerHTML = '<span class="titlespan">New Note</span><div class="date_div">'+formatted_date(key)+'</div>';
+	newli.setAttribute('id',key);
+	newli.setAttribute('onclick','switch_note('+key+')');
+	yb.id('note_titles').insertBefore(newli, yb.id('note_titles').firstChild);
+
+	yb.id('note_contents').setAttribute('data-timestamp',key);
+
+	switch_note(key);
+
+	yb.id('note_contents').focus();
+}
+
+
+
+
+
+/************************************************************************
+EDIT NOTE
+************************************************************************/
+yb.id('note_contents').onkeyup = function(e){
+	if(!(e.keyCode+'').match(/^(16|17|18|20|224|37|38|39|40)$/)){
+		
+		var newtitle = this.value.match(/[^\s][^\n]*/i);
+
+		// updated_notes
+		var last_update = +new Date()+'';
+
+		// automatic title editor
+		var current_key = this.getAttribute('data-timestamp');
+		yb.id(current_key).querySelector('.titlespan').innerHTML = newtitle ? newtitle[0] : 'untitled';
+
+		// automatic date editor
+		yb.id(current_key).querySelector('.date_div').innerHTML = formatted_date(last_update);
+
+		// store updated content
+		updated_notes[current_key] = {"updated":last_update, "content":this.value};
+		all_data[current_key] = updated_notes[current_key];
+	}
+}
+
+
+
+/************************************************************************
+SAVE ALL CHANGES
+************************************************************************/
+yb.id('save').onclick = function(){
+	socket.emit('save',updated_notes);
+	updated_notes = {};
+};
+
+
+
+/************************************************************************
+DELETE SELECTED NOTE
+************************************************************************/
+yb.id('delete_note').onclick = function(){
+	var current_key = yb.id('note_contents').getAttribute('data-timestamp');
+	socket.emit('delete_note', current_key);
+
+	yb.id('note_titles').removeChild(yb.id(current_key)); // remove deleted item from the dom
+	yb.id('note_titles').firstChild.click(); // select the first title available
+};
+
+
+
+
+
+/*
+
+Logic
+
+
+New note
+	click button
+	create new note title
+	associate it with the main text area
+	highlight note title
+	focus on the text area
+	onkeyup, make title equal to the first non-space character followed by any number of non-newline characters
+
+Select note
+
+Save button
+	delete old version of the note (based on data-timestamp attribute)
+	save a new version of the note as {timestamp:note}
+	or maybe save onchange or mouse out of window or on window blur or all of the above (onchange doesn't work too well)
+
+ALTERNATE IDEA: AUTOSAVE
+	use timestamp as date created and keep that consistent as the key
+	change last updated property
+
+
+things to add:
+	- change saved button to saving... then emit event for saved
+	- order notes by time last edited
+	- add are you sure for deletion
+
+*/
 
 </script>
 </body>
