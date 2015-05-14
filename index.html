@@ -118,7 +118,16 @@ socket.on('update_all_data',function(data){
 	var output = '';
 	all_data = data;
 
+	var sorted_keys = [];
+
 	for(var key in data){
+		sorted_keys.push(key);
+	}
+	sorted_keys.sort( function(a,b){return data[a].updated < data[b].updated} );
+
+	for(var i=0; i<sorted_keys.length; i++){
+		var key = sorted_keys[i];
+
 		// generate title from content
 		var visible_title = data[key].content.match(/[^\s][^\n]*/i);
 
@@ -154,8 +163,13 @@ SWITCH BETWEEN NOTES
 function switch_note(key){
 	try{document.querySelector('.selected_note').className = '';} catch(e){}
 
+	// highlight the selected note
 	yb.id(key).className = 'selected_note';
+
+	// show the content of the note, but if there's nothing then just show an empty note
 	yb.id('note_contents').value = all_data[key] ? all_data[key].content : '';
+
+	// make sure the note's contents are associated with the correct key
 	yb.id('note_contents').setAttribute('data-timestamp',key);
 }
 
@@ -172,20 +186,28 @@ var updated_notes = {};
 CREATE NEW NOTE
 ************************************************************************/
 yb.id('create_new').onclick = function(){
+	// set key equal to creation date
 	var key = +new Date()+'';
 	updated_notes[key] = '';
 
+	// create the dom element to hold the new note title and add it to the top of the list
 	var newli = document.createElement('li');
 	newli.innerHTML = '<span class="titlespan">New Note</span><div class="date_div">'+formatted_date(key)+'</div>';
 	newli.setAttribute('id',key);
 	newli.setAttribute('onclick','switch_note('+key+')');
 	yb.id('note_titles').insertBefore(newli, yb.id('note_titles').firstChild);
 
-	yb.id('note_contents').setAttribute('data-timestamp',key);
+	// make sure the note's contents are associated with the correct key
+	//yb.id('note_contents').setAttribute('data-timestamp',key);
 
+	// handle everything that happens when you switch to a new note (highlighting, etc)
 	switch_note(key);
 
-	yb.id('note_contents').focus();
+	yb.id('note_contents').focus(); // move the cursor to the text box
+
+	// store updated content
+	updated_notes[key] = {"updated":key, "content":""};
+	all_data[key] = updated_notes[key];
 }
 
 
@@ -198,9 +220,16 @@ EDIT NOTE
 yb.id('note_contents').onkeyup = function(e){
 	if(!(e.keyCode+'').match(/^(16|17|18|20|224|37|38|39|40)$/)){
 		
+		// make the save button say the right thing if it needs to change
+		var savetext = yb.id('save').innerHTML;
+		if(savetext!=='Save all changes'){
+			yb.id('save').innerHTML = 'Save all changes';
+		}
+
+		// generate the updated title
 		var newtitle = this.value.match(/[^\s][^\n]*/i);
 
-		// updated_notes
+		// store time and date of latest update
 		var last_update = +new Date()+'';
 
 		// automatic title editor
@@ -209,6 +238,12 @@ yb.id('note_contents').onkeyup = function(e){
 
 		// automatic date editor
 		yb.id(current_key).querySelector('.date_div').innerHTML = formatted_date(last_update);
+
+		// move current note to top of list if it's not there already
+		var list = yb.id('note_titles');
+		if(yb.id(current_key)!==list.firstChild){
+			list.insertBefore(yb.id(current_key), list.firstChild);
+		}
 
 		// store updated content
 		updated_notes[current_key] = {"updated":last_update, "content":this.value};
@@ -223,8 +258,12 @@ SAVE ALL CHANGES
 ************************************************************************/
 yb.id('save').onclick = function(){
 	socket.emit('save',updated_notes);
+	yb.id('save').innerHTML = '...';
 	updated_notes = {};
 };
+socket.on('saved', function(){
+	yb.id('save').innerHTML = 'Saved';
+});
 
 
 
@@ -269,9 +308,11 @@ ALTERNATE IDEA: AUTOSAVE
 
 
 things to add:
-	- change saved button to saving... then emit event for saved
-	- order notes by time last edited
+	- fix bug in json parse that appears because data somehow gets saved by being appended onto the end instead of put properly into the object
+		- seems to happen with new notes
+		- stuff seems to happen when more than one note has changed
 	- add are you sure for deletion
+	- search functionality
 
 */
 

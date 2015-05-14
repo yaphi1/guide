@@ -138,16 +138,13 @@ io.on('connection', function(socket){
 		for(var key in data){
 			addData(key, data[key]);
 		}
+		socket.emit('saved');
 	});
 
 	socket.on('delete_note', function(key){
 		removeData(key);
 	});
-
-
-	/*socket.on('request_profile',function(username){
-		getData(socket, username);
-	});*/
+	
 
 
 	function updateAllData(callback){
