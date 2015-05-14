@@ -137,6 +137,7 @@ io.on('connection', function(socket){
 	socket.on('save', function(data){
 		for(var key in data){
 			addData(key, data[key]);
+			console.log('BOOMadd key:'+key+' data:'+data[key]);
 		}
 		socket.emit('saved');
 	});
@@ -144,7 +145,7 @@ io.on('connection', function(socket){
 	socket.on('delete_note', function(key){
 		removeData(key);
 	});
-	
+
 
 
 	function updateAllData(callback){
