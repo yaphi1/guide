@@ -37,7 +37,7 @@ var my_data = {};
 // the file where the data will be kept
 var data_store = 'data.json';
 
-function addData(key, value, callback){
+function addData(data_object, callback){
 	// try to read this file
 	fs.readFile(data_store, 'utf-8', function(err, data){
 		
@@ -45,7 +45,7 @@ function addData(key, value, callback){
 		if(err){
 			console.log('no file, so we can create a new one');
 
-			my_data = {key:value}; // set the data
+			my_data = data_object; // set the data
 
 			fs.writeFile(data_store, JSON.stringify(my_data), function(err){
 				if(err){throw err;}
@@ -59,9 +59,13 @@ function addData(key, value, callback){
 
 		// if there is a file parse its data, and then add to it
 		var obj = JSON.parse(data);
-		obj[key] = value; // add the data in the requested key
+		
+		// add the data in the requested keys
+		for(var key in data_object){
+			obj[key] = data_object[key];
+		}
 
-		console.log('added the following data: '+key+':'+value);
+		console.log('added the following data: '+JSON.stringify(data_object));
 
 		// write the new version of the file
 		fs.writeFile(data_store, JSON.stringify(obj), function(err){
@@ -127,18 +131,9 @@ io.on('connection', function(socket){
 	console.log('a user connected');
 
 
-	socket.on('new_note',function(data){
-		addData(data[0], data[1], function(){
-			updateAllData();
-		});
-	});
 
-
-	socket.on('save', function(data){
-		for(var key in data){
-			addData(key, data[key]);
-			console.log('BOOMadd key:'+key+' data:'+data[key]);
-		}
+	socket.on('save', function(data_object){
+		addData(data_object);
 		socket.emit('saved');
 	});
 

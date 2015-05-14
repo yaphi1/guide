@@ -218,7 +218,7 @@ yb.id('create_new').onclick = function(){
 EDIT NOTE
 ************************************************************************/
 yb.id('note_contents').onkeyup = function(e){
-	if(!(e.keyCode+'').match(/^(16|17|18|20|224|37|38|39|40)$/)){
+	if(!(e.keyCode+'').match(/^(16|17|18|20|37|38|39|40)$/)){
 		
 		// make the save button say the right thing if it needs to change
 		var savetext = yb.id('save').innerHTML;
@@ -308,10 +308,6 @@ ALTERNATE IDEA: AUTOSAVE
 
 
 things to add:
-	- fix bug in json parse that appears because data somehow gets saved by being appended onto the end instead of put properly into the object
-		- seems to happen with new notes
-		- stuff seems to happen when more than one note has changed
-		- it might have to do with the way the data is parsed and stringified
 	- add are you sure for deletion
 	- search functionality
 
