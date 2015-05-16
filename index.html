@@ -14,9 +14,10 @@ body{
 	font-size:20px;
 	font-family:sans-serif;
 	color:#333;
+	overflow: hidden;
 
-	padding-left: 20px;
-	padding-bottom: 40px;
+	/*padding-left: 20px;
+	padding-bottom: 40px;*/
 }
 
 input, textarea{
@@ -44,13 +45,21 @@ form{
 	padding-left: 40px;
 }
 
-#note_titles{
+#note_titles_container{
 	vertical-align: top;
 	width:30%;
 	padding: 0px;
 	box-sizing:border-box;
 	background: #eee;
 	display: inline-block;
+	margin: 0px;
+	overflow: scroll;
+}
+
+#note_titles{
+	vertical-align: top;
+	padding: 0px;
+	box-sizing:border-box;
 	margin: 0px;
 }
 
@@ -77,16 +86,21 @@ form{
 
 #note_contents{
 	vertical-align: top;
-	width: 60%;
+	width: 70%;
 	box-sizing:border-box;
 	display: inline-block;
 	background: #faf0ee;
 	padding: 20px;
+	padding-top: 70px;
 	height: 500px;
 	font-family: sans-serif;
 	border: 0px;
+	overflow: scroll;
 }
 
+/*#note_contents,#note_titles{
+	padding-top: 70px;
+}*/
 
 
 #delete_overlay{
@@ -118,18 +132,51 @@ form{
 	padding-bottom: 40px;
 }
 
+#buttondiv{
+	position: absolute;
+	left:31%;
+	top: 5px;
+	width: 68%;
+}
+
+#buttondiv button{
+	font-size: 16px;
+	padding: 10px;
+}
+
+#searchbar{
+	border: 1px solid #eee;
+	padding: 5px;
+	border-radius: 3px;
+	font-size: 16px;
+	width: 90%;
+	margin: 5%;
+	box-sizing:border-box;
+	/*position: absolute;*/
+	/*left: 0px;*/
+
+}
+
 </style>
 
 </head>
 <body>
 
-<h1>Guide</h1>
+<!-- <div style="display:none;"> -->
+<!-- <h1>Guide</h1> -->
 
-<button id="get_delete_dialog" class="redbg">Delete Note</button>
-<button id="save" style="float:right; margin-right:140px;">Save all changes</button>
-<button id="create_new">New note</button>
-<br>
-<ul id="note_titles"></ul><!--
+<div id="buttondiv">
+	<button id="create_new">New note</button>
+	<button id="save" style="">Save all changes</button>
+	<button id="get_delete_dialog" style="float:right;" class="redbg">Delete Note</button>
+</div>
+<!-- <br> -->
+<!-- </div> -->
+
+<div id="note_titles_container">
+	<input placeholder="Search" id="searchbar" autocomplete="off">
+	<ul id="note_titles"></ul>
+</div><!--
 --><textarea id="note_contents">
 </textarea>
 
@@ -152,27 +199,50 @@ var all_data = {}; // this will hold the data
 
 
 
+
+
+/************************************************************************
+GENERATE NOTE TITLES BASED ON FIRST LINE OF CONTENT (and constrain length)
+************************************************************************/
+function generateTitle(full_text){
+	var title_length = 20;
+	var first_line = 'untitled'; // default title if there's no content
+
+	// if content is found, generate a title
+	if(full_text.match(/[^\s][^\n]+/i)){
+		first_line = full_text.match(/[^\s][^\n]+/i)[0];
+	}
+
+	// return the title and constrain the length if necessary
+	return first_line.length > title_length ? first_line.substr(0,title_length)+'...' : first_line;
+}
+
+
+
+
 /************************************************************************
 GET DATA FROM STORAGE
 ************************************************************************/
 socket.on('update_all_data',function(data){
 	console.log(data);
 
-	var output = '';
-	all_data = data;
+	var output = ''; // this will output the titles
+	all_data = data; // populate the data
 
+	// sort the data by date last edited
 	var sorted_keys = [];
-
 	for(var key in data){
 		sorted_keys.push(key);
 	}
 	sorted_keys.sort( function(a,b){return data[a].updated < data[b].updated} );
 
+	// generate titles
 	for(var i=0; i<sorted_keys.length; i++){
 		var key = sorted_keys[i];
 
 		// generate title from content
-		var visible_title = data[key].content.match(/[^\s][^\n]*/i);
+		//var visible_title = data[key].content.match(/[^\s][^\n]*/i);
+		var visible_title = generateTitle(data[key].content);
 
 		// set up titles
 		output += '<li id="'+key+'" onclick="switch_note('+key+')"><span class="titlespan">'+visible_title+'</span><div class="date_div">'+formatted_date(data[key].updated)+'</div></li>';
@@ -218,7 +288,11 @@ function switch_note(key){
 
 
 
-// this will store any new and/or updated notes before they get saved
+
+/************************************************************************
+This will store any new and/or updated notes before they get saved
+	It's super important, so it gets its own section
+************************************************************************/
 var updated_notes = {};
 
 
@@ -240,10 +314,7 @@ yb.id('create_new').onclick = function(){
 	newli.setAttribute('onclick','switch_note('+key+')');
 	yb.id('note_titles').insertBefore(newli, yb.id('note_titles').firstChild);
 
-	// make sure the note's contents are associated with the correct key
-	//yb.id('note_contents').setAttribute('data-timestamp',key);
-
-	// handle everything that happens when you switch to a new note (highlighting, etc)
+	// handle everything that happens when you switch to a new note (highlighting, identifying, etc)
 	switch_note(key);
 
 	yb.id('note_contents').focus(); // move the cursor to the text box
@@ -261,7 +332,7 @@ yb.id('create_new').onclick = function(){
 EDIT NOTE
 ************************************************************************/
 yb.id('note_contents').onkeyup = function(e){
-	if(!(e.keyCode+'').match(/^(16|17|18|20|37|38|39|40)$/)){
+	if(!(e.keyCode+'').match(/^(16|18|20|27|37|38|39|40)$/)){
 		
 		// make the save button say the right thing if it needs to change
 		var savetext = yb.id('save').innerHTML;
@@ -270,14 +341,15 @@ yb.id('note_contents').onkeyup = function(e){
 		}
 
 		// generate the updated title
-		var newtitle = this.value.match(/[^\s][^\n]*/i);
+		//var newtitle = this.value.match(/[^\s][^\n]*/i);
+		var newtitle = generateTitle(this.value);
 
 		// store time and date of latest update
 		var last_update = +new Date()+'';
 
 		// automatic title editor
 		var current_key = this.getAttribute('data-timestamp');
-		yb.id(current_key).querySelector('.titlespan').innerHTML = newtitle ? newtitle[0] : 'untitled';
+		yb.id(current_key).querySelector('.titlespan').innerHTML = newtitle;
 
 		// automatic date editor
 		yb.id(current_key).querySelector('.date_div').innerHTML = formatted_date(last_update);
@@ -338,6 +410,49 @@ yb.id('never_mind').onclick = function(){
 
 
 
+/************************************************************************
+MAKE SURE PAGE ELEMENTS HAVE CORRECT SIZES
+************************************************************************/
+function resize_boxes(){
+	yb.id('note_titles').style.height = window.innerHeight + 'px';
+	yb.id('note_contents').style.height = window.innerHeight + 'px';
+}
+resize_boxes();
+window.onresize = resize_boxes;
+
+
+
+
+
+
+
+
+/************************************************************************
+SEARCH FUNCTIONALITY
+************************************************************************/
+yb.id('searchbar').onkeyup = function(e){
+	if(!(e.keyCode+'').match(/^(16|18|20|27|37|38|39|40)$/)){
+		
+		// put search words into an array
+		var words = this.value.trim().split(/\s+/ig);
+
+		// look through each note
+		for(var key in all_data){
+			var content = all_data[key].content; // get the content of the note
+			
+			yb.id(key).style.display = 'block'; // show all entries by default
+
+			// hide each note that doesn't contain every word in the search term
+			for(var i=0; i<words.length; i++){
+				var regword = RegExp(words[i],'i'); // text case shouldn't matter
+				if(!content.match(regword)){
+					yb.id(key).style.display = 'none';
+				}
+			}
+		}
+	}
+};
+
 
 
 /*
@@ -347,27 +462,30 @@ Logic
 
 New note
 	click button
-	create new note title
+	create new note title dom element
 	associate it with the main text area
 	highlight note title
 	focus on the text area
 	onkeyup, make title equal to the first non-space character followed by any number of non-newline characters
+	add the note to the updated_notes object
 
 Select note
+	highlight note
+	associate text area with the correct note data
+
+Edit note
+	add the note to the updated_notes object
 
 Save button
-	delete old version of the note (based on data-timestamp attribute)
-	save a new version of the note as {timestamp:note}
-	or maybe save onchange or mouse out of window or on window blur or all of the above (onchange doesn't work too well)
+	save everything from the updated_notes object and clear the object
+	use time created (not updated) as key for object in order to keep consistency
 
-ALTERNATE IDEA: AUTOSAVE
-	use timestamp as date created and keep that consistent as the key
-	change last updated property
+Delete note
+	straightforward - delete currently selected note after confirmation
 
+Search
+	on key up, find all notes that match every word in the search query (in any order and ignoring case)
 
-things to add:
-	- add are you sure for deletion
-	- search functionality
 
 */
 
