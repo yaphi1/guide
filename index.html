@@ -15,13 +15,10 @@ body{
 	font-family:sans-serif;
 	color:#333;
 	overflow: hidden;
-
-	/*padding-left: 20px;
-	padding-bottom: 40px;*/
 }
 
 input, textarea{
-	font-size: 30px;
+	font-size: 20px;
 	width: 50%;
 	padding: 15px;
 	border: 1px solid #ddd;
@@ -38,7 +35,7 @@ button{
 }
 
 button.redbg{
-	background: red;
+	background: #d05;
 }
 
 form{
@@ -61,6 +58,7 @@ form{
 	padding: 0px;
 	box-sizing:border-box;
 	margin: 0px;
+	padding-top: 70px;
 }
 
 #note_titles li{
@@ -81,7 +79,7 @@ form{
 }
 
 .selected_note{
-	background: gold;
+	background: #fff;
 }
 
 #note_contents{
@@ -89,18 +87,17 @@ form{
 	width: 70%;
 	box-sizing:border-box;
 	display: inline-block;
-	background: #faf0ee;
-	padding: 20px;
-	padding-top: 70px;
 	height: 500px;
 	font-family: sans-serif;
 	border: 0px;
 	overflow: scroll;
-}
+	resize: none;
+	padding: 20px;
+	padding-top: 80px;
 
-/*#note_contents,#note_titles{
-	padding-top: 70px;
-}*/
+	background: #fff;
+	color: #555;
+}
 
 
 #delete_overlay{
@@ -132,11 +129,14 @@ form{
 	padding-bottom: 40px;
 }
 
+#buttondiv, #note_contents{
+	width: calc(100% - 300px);
+	display: inline-block;
+}
+
 #buttondiv{
-	position: absolute;
-	left:31%;
-	top: 5px;
-	width: 68%;
+	box-sizing: border-box;
+	padding: 10px;
 }
 
 #buttondiv button{
@@ -149,12 +149,27 @@ form{
 	padding: 5px;
 	border-radius: 3px;
 	font-size: 16px;
-	width: 90%;
-	margin: 5%;
+	width: 98%;
 	box-sizing:border-box;
-	/*position: absolute;*/
-	/*left: 0px;*/
+}
 
+#searchbar_container{
+	padding: 10px;
+	box-sizing:border-box;
+	text-align: center;
+}
+
+#searchbar_container, #note_titles_container{
+	width: 300px;
+	display: inline-block;
+}
+
+#topbar{
+	position: fixed;
+	background: rgba(22,22,22,0.1);
+	left: 0px;
+	top: 0px;
+	width: 100%;
 }
 
 </style>
@@ -165,16 +180,23 @@ form{
 <!-- <div style="display:none;"> -->
 <!-- <h1>Guide</h1> -->
 
-<div id="buttondiv">
-	<button id="create_new">New note</button>
-	<button id="save" style="">Save all changes</button>
-	<button id="get_delete_dialog" style="float:right;" class="redbg">Delete Note</button>
+<div id="topbar">
+	<div id="searchbar_container">
+		<input placeholder="Search" id="searchbar" autocomplete="off">
+	</div><!--
+	--><div id="buttondiv">
+		<button id="create_new">New note</button>
+		<button id="save" style="">Save all changes</button>
+		<button id="get_delete_dialog" style="float:right;" class="redbg">Delete Note</button>
+	</div>
 </div>
 <!-- <br> -->
 <!-- </div> -->
 
+
+
+
 <div id="note_titles_container">
-	<input placeholder="Search" id="searchbar" autocomplete="off">
 	<ul id="note_titles"></ul>
 </div><!--
 --><textarea id="note_contents">
@@ -206,11 +228,12 @@ GENERATE NOTE TITLES BASED ON FIRST LINE OF CONTENT (and constrain length)
 ************************************************************************/
 function generateTitle(full_text){
 	var title_length = 20;
+	var trimmed_text = full_text.trim();
 	var first_line = 'untitled'; // default title if there's no content
 
 	// if content is found, generate a title
-	if(full_text.match(/[^\s][^\n]+/i)){
-		first_line = full_text.match(/[^\s][^\n]+/i)[0];
+	if(trimmed_text.match(/[^\s]*[^\n]+/i)){
+		first_line = trimmed_text.match(/[^\s]*[^\n]+/i)[0];
 	}
 
 	// return the title and constrain the length if necessary
