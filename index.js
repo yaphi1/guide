@@ -13,8 +13,7 @@ app.get('/', function(req,res){
 
 
 
-//var port = Number(process.env.PORT || 1337);
-var port = 1337;
+var port = Number(process.env.PORT || 1337);
 
 http.listen(port, function(){
 	console.log('listening on port '+port);
